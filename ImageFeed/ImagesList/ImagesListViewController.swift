@@ -41,6 +41,8 @@ private extension ImagesListViewController {
             return
         }
         
+        cell.gradientView.backgroundColor = UIColor.clear
+        
         cell.cellImage.image = image
         cell.dateLabel.text = dateFormatter.string(from: Date())
         
