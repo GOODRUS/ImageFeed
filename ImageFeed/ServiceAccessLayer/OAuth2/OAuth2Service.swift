@@ -9,46 +9,90 @@ import Foundation
 
 final class OAuth2Service {
     static let shared = OAuth2Service()
-    private var task: URLSessionTask?
-    private let tokenStorage = OAuth2TokenStorage()
+
+    private let dataStorage = OAuth2TokenStorage.shared   
+    private let urlSession = URLSession.shared
+
+    private(set) var authToken: String? {
+        get { dataStorage.token }
+        set { dataStorage.token = newValue }
+    }
 
     private init() { }
 
-    func fetchOAuthToken(
-        _ code: String,
-        completion: @escaping (Result<String, Error>) -> Void
-    ) {
-        task?.cancel()
-
+    func fetchOAuthToken(_ code: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let request = makeOAuthTokenRequest(code: code) else {
-            print("Ошибка: некорректный запрос (invalidRequest)")
             completion(.failure(NetworkError.invalidRequest))
             return
         }
 
-        task = URLSession.shared.data(for: request) { result in
+        let task = object(for: request) { [weak self] result in
+            guard let self else { return }
+
             switch result {
-            case .success(let data):
-                do {
-                    let response = try JSONDecoder().decode(OAuthTokenResponseBody.self, from: data)
-                    self.tokenStorage.token = response.accessToken
-                    completion(.success(response.accessToken))
-                } catch {
-                    print("Ошибка декодирования токена: \(error)")
-                    completion(.failure(NetworkError.decodingError(error)))
-                }
+            case .success(let body):
+                let authToken = body.accessToken
+                self.authToken = authToken
+                completion(.success(authToken))
             case .failure(let error):
-                switch error {
-                case NetworkError.httpStatusCode(let code):
-                    print("Ошибка сервиса Unsplash: HTTP статус-код \(code)")
-                case NetworkError.urlRequestError(let err):
-                    print("Сетевая ошибка: \(err.localizedDescription)")
-                default:
-                    print("Другая ошибка: \(error)")
-                }
                 completion(.failure(error))
             }
         }
-        task?.resume()
+        task.resume()
+    }
+
+    private func makeOAuthTokenRequest(code: String) -> URLRequest? {
+        guard var urlComponents = URLComponents(string: "https://unsplash.com/oauth/token") else {
+            return nil
+        }
+
+        urlComponents.queryItems = [
+            URLQueryItem(name: "client_id", value: Constants.accessKey),
+            URLQueryItem(name: "client_secret", value: Constants.secretKey),
+            URLQueryItem(name: "redirect_uri", value: Constants.redirectURI),
+            URLQueryItem(name: "code", value: code),
+            URLQueryItem(name: "grant_type", value: "authorization_code"),
+        ]
+
+        guard let authTokenUrl = urlComponents.url else {
+            return nil
+        }
+
+        var request = URLRequest(url: authTokenUrl)
+        request.httpMethod = "POST"
+        return request
+    }
+
+    private struct OAuthTokenResponseBody: Codable {
+        let accessToken: String
+
+        enum CodingKeys: String, CodingKey {
+            case accessToken = "access_token"
+        }
     }
 }
+
+// MARK: - Network Client
+
+extension OAuth2Service {
+    private func object(
+        for request: URLRequest,
+        completion: @escaping (Result<OAuthTokenResponseBody, Error>) -> Void
+    ) -> URLSessionTask {
+        let decoder = JSONDecoder()
+        return urlSession.data(for: request) { result in
+            switch result {
+            case .success(let data):
+                do {
+                    let body = try decoder.decode(OAuthTokenResponseBody.self, from: data)
+                    completion(.success(body))
+                } catch {
+                    completion(.failure(NetworkError.decodingError(error)))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+}
+

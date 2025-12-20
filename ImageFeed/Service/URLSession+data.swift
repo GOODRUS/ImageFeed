@@ -25,7 +25,7 @@ extension URLSession {
                 completion(result)
             }
         }
-
+        
         let task = dataTask(with: request, completionHandler: { data, response, error in
             if let data = data, let response = response, let statusCode = (response as? HTTPURLResponse)?.statusCode {
                 if 200 ..< 300 ~= statusCode {
@@ -39,27 +39,7 @@ extension URLSession {
                 fulfillCompletionOnTheMainThread(.failure(NetworkError.urlSessionError))
             }
         })
-
+        
         return task
     }
-}
-
-func makeOAuthTokenRequest(code: String) -> URLRequest? {
-    guard let url = URL(string: "https://unsplash.com/oauth/token") else {
-        return nil
-    }
-
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    let params = [
-        "client_id": Constants.accessKey,
-        "client_secret": Constants.secretKey,
-        "redirect_uri": Constants.redirectURI,
-        "code": code,
-        "grant_type": "authorization_code"
-    ]
-    let bodyString = params.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
-    request.httpBody = bodyString.data(using: .utf8)
-    request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-    return request
 }

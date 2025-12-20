@@ -18,33 +18,30 @@ protocol WebViewViewControllerDelegate: AnyObject {
 }
 
 final class WebViewViewController: UIViewController {
-    
-    @IBOutlet weak var webView: WKWebView!
+
+    @IBOutlet private weak var webView: WKWebView!
     @IBOutlet private var progressView: UIProgressView!
-    
+
     weak var delegate: WebViewViewControllerDelegate?
-    
-    
+
+    private let storage = OAuth2TokenStorage.shared
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        webView.navigationDelegate = self
 
+        webView.navigationDelegate = self
         loadAuthView()
-        
     }
-    
-    
-    private let storage = OAuth2TokenStorage()
-    
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-  
+
         webView.addObserver(
             self,
             forKeyPath: #keyPath(WKWebView.estimatedProgress),
             options: .new,
-            context: nil)
+            context: nil
+        )
         updateProgress()
     }
 
@@ -53,7 +50,12 @@ final class WebViewViewController: UIViewController {
         webView.removeObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), context: nil)
     }
 
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+    override func observeValue(
+        forKeyPath keyPath: String?,
+        of object: Any?,
+        change: [NSKeyValueChangeKey : Any]?,
+        context: UnsafeMutableRawPointer?
+    ) {
         if keyPath == #keyPath(WKWebView.estimatedProgress) {
             updateProgress()
         } else {
@@ -65,26 +67,26 @@ final class WebViewViewController: UIViewController {
         progressView.progress = Float(webView.estimatedProgress)
         progressView.isHidden = fabs(webView.estimatedProgress - 1.0) <= 0.0001
     }
-    
+
     private func loadAuthView() {
         guard var urlComponents = URLComponents(string: WebViewConstants.unsplashAuthorizeURLString) else {
             return
         }
-        
+
         urlComponents.queryItems = [
             URLQueryItem(name: "client_id", value: Constants.accessKey),
             URLQueryItem(name: "redirect_uri", value: Constants.redirectURI),
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "scope", value: Constants.accessScope)
         ]
-        
+
         guard let url = urlComponents.url else {
             return
         }
-        
+
         let request = URLRequest(url: url)
         webView.load(request)
-        
+
         updateProgress()
     }
 }
@@ -117,4 +119,3 @@ extension WebViewViewController: WKNavigationDelegate {
         }
     }
 }
-
