@@ -17,14 +17,14 @@ final class ProfileViewController: UIViewController {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.layer.masksToBounds = true
         imageView.layer.cornerRadius = 35
-        imageView.image = UIImage(named: Constants.avatarImageName)
+        imageView.image = UIImage(named: Constant.avatarImageName)
         return imageView
     }()
     
     private let nameLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = Constants.nameText
+        label.text = Constant.nameText
         label.font = UIFont.systemFont(ofSize: 23, weight: .semibold)
         label.textColor = .white
         return label
@@ -33,7 +33,7 @@ final class ProfileViewController: UIViewController {
     private let loginNameLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = Constants.descriptionText
+        label.text = Constant.descriptionText
         label.font = UIFont.systemFont(ofSize: 13)
         label.textColor = UIColor(red: 0.682, green: 0.686, blue: 0.706, alpha: 1)
         return label
@@ -42,7 +42,7 @@ final class ProfileViewController: UIViewController {
     private let descriptionLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = Constants.loginNameText
+        label.text = Constant.loginNameText
         label.font = UIFont.systemFont(ofSize: 13)
         label.textColor = .white
         return label
@@ -51,7 +51,7 @@ final class ProfileViewController: UIViewController {
     private let logoutButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        let image = UIImage(named: Constants.logoutButtonImageName)
+        let image = UIImage(named: Constant.logoutButtonImageName)
         button.setImage(image, for: .normal)
         button.tintColor = UIColor(red: 0.961, green: 0.420, blue: 0.424, alpha: 1)
         button.accessibilityIdentifier = "LogoutButton"
@@ -83,36 +83,36 @@ final class ProfileViewController: UIViewController {
         
         NSLayoutConstraint.activate([
             
-            avatarImageView.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: Constants.avatarLeading),
-            avatarImageView.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: Constants.avatarTop),
-            avatarImageView.widthAnchor.constraint(equalToConstant: Constants.avatarSize),
+            avatarImageView.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: Constant.avatarLeading),
+            avatarImageView.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: Constant.avatarTop),
+            avatarImageView.widthAnchor.constraint(equalToConstant: Constant.avatarSize),
             avatarImageView.heightAnchor.constraint(equalTo: avatarImageView.widthAnchor),
             
             // Avatar Image View
             nameLabel.leadingAnchor.constraint(equalTo: avatarImageView.leadingAnchor),
-            nameLabel.topAnchor.constraint(equalTo: avatarImageView.bottomAnchor, constant: Constants.nameTopOffset),
-            safeArea.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: Constants.trailingOffset),
+            nameLabel.topAnchor.constraint(equalTo: avatarImageView.bottomAnchor, constant: Constant.nameTopOffset),
+            safeArea.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: Constant.trailingOffset),
             
             // Name Label
             loginNameLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             loginNameLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
-            loginNameLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: Constants.loginNameTopOffset),
+            loginNameLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: Constant.loginNameTopOffset),
             
             // Login Name Label
             descriptionLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             descriptionLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
-            descriptionLabel.topAnchor.constraint(equalTo: loginNameLabel.bottomAnchor, constant: Constants.descriptionTopOffset),
+            descriptionLabel.topAnchor.constraint(equalTo: loginNameLabel.bottomAnchor, constant: Constant.descriptionTopOffset),
             
             // Description Label
-            logoutButton.widthAnchor.constraint(equalToConstant: Constants.logoutButtonSize),
-            logoutButton.heightAnchor.constraint(equalToConstant: Constants.logoutButtonSize),
+            logoutButton.widthAnchor.constraint(equalToConstant: Constant.logoutButtonSize),
+            logoutButton.heightAnchor.constraint(equalToConstant: Constant.logoutButtonSize),
             logoutButton.centerYAnchor.constraint(equalTo: avatarImageView.centerYAnchor),
-            safeArea.trailingAnchor.constraint(equalTo: logoutButton.trailingAnchor, constant: Constants.trailingOffset)
+            safeArea.trailingAnchor.constraint(equalTo: logoutButton.trailingAnchor, constant: Constant.trailingOffset)
         ])
     }
 }
 
-private enum Constants {
+private enum Constant {
     static let avatarCornerRadius: CGFloat = 35
     static let avatarSize: CGFloat = 70
     static let avatarLeading: CGFloat = 16
