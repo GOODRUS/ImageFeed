@@ -6,17 +6,24 @@
 //
 
 import UIKit
+import ProgressHUD
+
+protocol AuthViewControllerDelegate: AnyObject {
+    func authViewController(_ vc: AuthViewController, didAuthenticateWithToken token: String)
+}
 
 final class AuthViewController: UIViewController {
-    
+
+    weak var delegate: AuthViewControllerDelegate?
+
     private let showWebViewSegueIdentifier = "ShowWebView"
     private let oauth2Service = OAuth2Service.shared
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         configureBackButton()
     }
-    
+
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == showWebViewSegueIdentifier {
             guard
@@ -30,12 +37,31 @@ final class AuthViewController: UIViewController {
             super.prepare(for: segue, sender: sender)
         }
     }
-    
+
     private func configureBackButton() {
         navigationController?.navigationBar.backIndicatorImage = UIImage(resource: .navBackButton)
         navigationController?.navigationBar.backIndicatorTransitionMaskImage = UIImage(named: "nav_back_button")
         navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
         navigationItem.backBarButtonItem?.tintColor = UIColor(resource: .ypBlack)
+    }
+
+    private func showAuthErrorAlert() {
+        let alert = UIAlertController(
+            title: "Что-то пошло не так(",
+            message: "Не удалось войти в систему",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Ок", style: .default))
+        present(alert, animated: true)
+    }
+
+    // Note: These two methods intentionally show and hide UIBlockingProgressHUD.
+    private func showBlockingHUD() {
+        UIBlockingProgressHUD.show()
+    }
+
+    private func hideBlockingHUD() {
+        UIBlockingProgressHUD.dismiss()
     }
 }
 
@@ -43,21 +69,28 @@ final class AuthViewController: UIViewController {
 
 extension AuthViewController: WebViewViewControllerDelegate {
     func webViewViewController(_ vc: WebViewViewController, didAuthenticateWithCode code: String) {
-        oauth2Service.fetchOAuthToken(code) { [weak self] result in
-            guard let self else { return }
+        // dismiss the webview, then show HUD and start token request
+        vc.dismiss(animated: true) { [weak self] in
+            guard let self = self else { return }
 
-            switch result {
-            case .success:
-                self.dismiss(animated: true)
+            self.showBlockingHUD()
 
-            case .failure:
-                let alert = UIAlertController(
-                    title: "Что-то пошло не так(",
-                    message: "Не удалось войти в систему",
-                    preferredStyle: .alert
-                )
-                alert.addAction(UIAlertAction(title: "OK", style: .default))
-                self.present(alert, animated: true)
+            self.oauth2Service.fetchOAuthToken(code) { [weak self] result in
+                guard let self = self else { return }
+
+                // always hide HUD when finished
+                self.hideBlockingHUD()
+
+                switch result {
+                case .success(let token):
+                    // notify delegate and dismiss AuthViewController
+                    self.dismiss(animated: true) {
+                        self.delegate?.authViewController(self, didAuthenticateWithToken: token)
+                    }
+
+                case .failure:
+                    self.showAuthErrorAlert()
+                }
             }
         }
     }
