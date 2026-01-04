@@ -7,32 +7,22 @@
 
 import Foundation
 
-// MARK: - Models
-
-struct UserResult: Codable {
-    let profileImage: ProfileImage
-
-    enum CodingKeys: String, CodingKey {
-        case profileImage = "profile_image"
-    }
-
-    struct ProfileImage: Codable {
-        let small: String
-    }
-}
-
-// MARK: - ProfileImageService
-
 final class ProfileImageService {
     static let shared = ProfileImageService()
-    static let didChangeNotification = Notification.Name(rawValue: "ProfileImageProviderDidChange")
+    static let didChangeNotification = Notification.Name(rawValue: "ProfileImageService.avatarDidChange")
 
     private(set) var avatarURL: String?
 
-    private let urlSession = URLSession.shared
+    private let urlSession: URLSession
     private var task: URLSessionTask?
 
-    private init() {}
+    init(urlSession: URLSession = .shared) {
+        self.urlSession = urlSession
+    }
+
+    private init() {
+        self.urlSession = .shared
+    }
 
     // MARK: - Networking
 
@@ -62,7 +52,7 @@ final class ProfileImageService {
                 NotificationCenter.default.post(
                     name: ProfileImageService.didChangeNotification,
                     object: self,
-                    userInfo: ["URL": profileImageURL]
+                    userInfo: ["url": profileImageURL]
                 )
 
             case .failure(let error):
@@ -79,7 +69,8 @@ final class ProfileImageService {
     private func makeProfileImageRequest(username: String) -> URLRequest? {
         guard
             let baseURL = Constants.defaultBaseURL,
-            let url = URL(string: "/users/\(username)", relativeTo: baseURL)
+            let escaped = username.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+            let url = URL(string: "/users/\(escaped)", relativeTo: baseURL)
         else {
             return nil
         }
@@ -91,6 +82,7 @@ final class ProfileImageService {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         return request
     }
 }

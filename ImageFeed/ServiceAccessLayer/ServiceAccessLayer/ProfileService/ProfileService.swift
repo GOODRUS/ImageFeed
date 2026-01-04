@@ -7,36 +7,21 @@
 
 import Foundation
 
-struct Profile {
-    let username: String
-    let name: String
-    let loginName: String
-    let bio: String?
-}
-
-struct ProfileResult: Codable {
-    let username: String
-    let firstName: String
-    let lastName: String
-    let bio: String?
-
-    private enum CodingKeys: String, CodingKey {
-        case username
-        case firstName = "first_name"
-        case lastName = "last_name"
-        case bio
-    }
-}
-
 final class ProfileService {
     static let shared = ProfileService()
 
     private(set) var profile: Profile?
 
     private var task: URLSessionTask?
-    private let urlSession = URLSession.shared
+    private let urlSession: URLSession
 
-    private init() {}
+    init(urlSession: URLSession = .shared) {
+        self.urlSession = urlSession
+    }
+
+    private init() {
+        self.urlSession = .shared
+    }
 
     // MARK: - Networking
 
@@ -45,7 +30,7 @@ final class ProfileService {
 
         guard let request = makeProfileRequest(token: token) else {
             let error = URLError(.badURL)
-            print("[ProfileService.fetchProfile]: invalidRequest for token \(token)")
+            print("[ProfileService.fetchProfile]: invalidRequest for token (redacted)")
             completion(.failure(error))
             return
         }
@@ -56,16 +41,24 @@ final class ProfileService {
 
             switch result {
             case .success(let profileResult):
+                let fullName: String
+                if let last = profileResult.lastName, !last.isEmpty {
+                    fullName = "\(profileResult.firstName) \(last)"
+                } else {
+                    fullName = profileResult.firstName
+                }
+
                 let profile = Profile(
                     username: profileResult.username,
-                    name: "\(profileResult.firstName) \(profileResult.lastName)",
+                    name: fullName,
                     loginName: "@\(profileResult.username)",
                     bio: profileResult.bio
                 )
                 self.profile = profile
                 completion(.success(profile))
+
             case .failure(let error):
-                print("[ProfileService.fetchProfile]: failure - \(error.localizedDescription) for token \(token)")
+                print("[ProfileService.fetchProfile]: failure - \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -81,6 +74,7 @@ final class ProfileService {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         return request
     }
 }

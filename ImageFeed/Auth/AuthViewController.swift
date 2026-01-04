@@ -55,7 +55,6 @@ final class AuthViewController: UIViewController {
         present(alert, animated: true)
     }
 
-    // Note: These two methods intentionally show and hide UIBlockingProgressHUD.
     private func showBlockingHUD() {
         UIBlockingProgressHUD.show()
     }
@@ -69,7 +68,6 @@ final class AuthViewController: UIViewController {
 
 extension AuthViewController: WebViewViewControllerDelegate {
     func webViewViewController(_ vc: WebViewViewController, didAuthenticateWithCode code: String) {
-        // dismiss the webview, then show HUD and start token request
         vc.dismiss(animated: true) { [weak self] in
             guard let self = self else { return }
 
@@ -78,12 +76,10 @@ extension AuthViewController: WebViewViewControllerDelegate {
             self.oauth2Service.fetchOAuthToken(code) { [weak self] result in
                 guard let self = self else { return }
 
-                // always hide HUD when finished
                 self.hideBlockingHUD()
 
                 switch result {
                 case .success(let token):
-                    // notify delegate and dismiss AuthViewController
                     self.dismiss(animated: true) {
                         self.delegate?.authViewController(self, didAuthenticateWithToken: token)
                     }

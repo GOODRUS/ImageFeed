@@ -23,7 +23,6 @@ final class SplashViewController: UIViewController {
     // MARK: - Lifecycle
 
     override func loadView() {
-        super.loadView()
         view = UIView()
         view.backgroundColor = UIColor(red: 0.102, green: 0.106, blue: 0.133, alpha: 1)
     }
@@ -42,14 +41,14 @@ final class SplashViewController: UIViewController {
         let token = storage.token
 
         #if DEBUG
-        print("[Splash] token read: \(String(describing: token))")
+        print("[Splash] token present: \(token != nil && !(token!.isEmpty))")
         #endif
 
         guard let token = token, !token.isEmpty else {
             #if DEBUG
             print("[Splash] no token — presenting Auth")
             #endif
-            presentAuthController()
+            presentAuthControllerIfNeeded()
             return
         }
 
@@ -71,11 +70,26 @@ final class SplashViewController: UIViewController {
                 self.switchToTabBarController()
 
             case .failure(let error):
+                if case NetworkError.urlRequestError(let urlError) = error,
+                   (urlError as NSError).code == NSURLErrorCancelled {
+                    #if DEBUG
+                    print("[Splash] fetchProfile cancelled - ignoring")
+                    #endif
+                    return
+                }
+
+                if case NetworkError.httpStatusCode(let status) = error, status == 401 {
+                    #if DEBUG
+                    print("[Splash] fetchProfile unauthorized (401) - clearing token and presenting Auth")
+                    #endif
+                    self.storage.token = nil
+                    self.presentAuthControllerIfNeeded()
+                    return
+                }
+
                 #if DEBUG
-                print("[Splash] fetchProfile failed: \(error.localizedDescription). Clearing token and presenting Auth.")
+                print("[Splash] fetchProfile non-auth error: \(error.localizedDescription)")
                 #endif
-                self.storage.token = nil
-                self.presentAuthController()
             }
         }
     }
@@ -86,7 +100,9 @@ final class SplashViewController: UIViewController {
 
     // MARK: - UI / Navigation
 
-    private func presentAuthController() {
+    private func presentAuthControllerIfNeeded() {
+        if presentedViewController is AuthViewController { return }
+
         let storyboard = UIStoryboard(name: "Main", bundle: .main)
         guard let authVC = storyboard.instantiateViewController(withIdentifier: "AuthViewController") as? AuthViewController else {
             assertionFailure("AuthViewController storyboard ID not set or wrong type")
@@ -101,15 +117,18 @@ final class SplashViewController: UIViewController {
     private func switchToTabBarController() {
         guard
             let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-            let sceneDelegate = windowScene.delegate as? SceneDelegate,
-            let window = sceneDelegate.window
+            let window = windowScene.windows.first
         else {
             assertionFailure("Invalid window configuration")
             return
         }
 
         let storyboard = UIStoryboard(name: "Main", bundle: .main)
-        let tabBarController = storyboard.instantiateViewController(withIdentifier: "TabBarViewController")
+        guard let tabBarController = storyboard.instantiateViewController(withIdentifier: "TabBarViewController") as? UITabBarController else {
+            assertionFailure("TabBarViewController storyboard ID not set or wrong type")
+            return
+        }
+
         window.rootViewController = tabBarController
         window.makeKeyAndVisible()
     }
@@ -145,7 +164,7 @@ final class SplashViewController: UIViewController {
         #if DEBUG
         print("[Splash][DEBUG] Token cleared by user")
         #endif
-        presentAuthController()
+        presentAuthControllerIfNeeded()
     }
 }
 
@@ -154,7 +173,7 @@ final class SplashViewController: UIViewController {
 extension SplashViewController: AuthViewControllerDelegate {
     func authViewController(_ vc: AuthViewController, didAuthenticateWithToken token: String) {
         #if DEBUG
-        print("[Splash] didAuthenticateWithToken: \(token)")
+        print("[Splash] didAuthenticateWithToken: token received")
         #endif
         storage.token = token
         UIBlockingProgressHUD.show()
@@ -165,11 +184,28 @@ extension SplashViewController: AuthViewControllerDelegate {
             case .success(let profile):
                 ProfileImageService.shared.fetchProfileImageURL(username: profile.username) { _ in }
                 self.switchToTabBarController()
-            case .failure:
-                self.storage.token = nil
-                let alert = UIAlertController(title: "Что-то пошло не так(", message: "Не удалось загрузить профиль", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-                    self.presentAuthController()
+            case .failure(let error):
+                if case NetworkError.urlRequestError(let urlError) = error,
+                   (urlError as NSError).code == NSURLErrorCancelled {
+                    #if DEBUG
+                    print("[Splash] fetchProfile cancelled after auth - ignoring")
+                    #endif
+                    return
+                }
+
+                if case NetworkError.httpStatusCode(let status) = error, status == 401 {
+                    self.storage.token = nil
+                    self.presentAuthControllerIfNeeded()
+                    return
+                }
+
+                let alert = UIAlertController(
+                    title: NSLocalizedString("error_title", comment: "Generic error title"),
+                    message: NSLocalizedString("profile_load_failed_message", comment: "Profile load failed"),
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: NSLocalizedString("ok_button", comment: "OK"), style: .default) { _ in
+                    self.presentAuthControllerIfNeeded()
                 })
                 self.present(alert, animated: true)
             }
