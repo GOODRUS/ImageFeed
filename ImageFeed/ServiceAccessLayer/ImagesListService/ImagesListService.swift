@@ -12,7 +12,6 @@ final class ImagesListService {
 
     static let didChangeNotification = Notification.Name(rawValue: "ImagesListServiceDidChange")
 
-    // Список всех загруженных фото
     private(set) var photos: [Photo] = []
 
     private var lastLoadedPage: Int?
@@ -27,9 +26,8 @@ final class ImagesListService {
 
     // MARK: - Public
 
-    /// Загрузка следующей страницы списка фото
     func fetchPhotosNextPage() {
-        // если загрузка уже идёт — не создаём новый запрос
+
         if task != nil {
             return
         }
@@ -37,7 +35,6 @@ final class ImagesListService {
         let nextPage = (lastLoadedPage ?? 0) + 1
 
         guard let request = makePhotosRequest(page: nextPage) else {
-            let error = URLError(.badURL)
             print("[ImagesListService.fetchPhotosNextPage]: invalidRequest for page \(nextPage)")
             return
         }
@@ -51,7 +48,6 @@ final class ImagesListService {
                 let dateFormatter = ISO8601DateFormatter()
                 let newPhotos = photoResults.map { Photo(from: $0, dateFormatter: dateFormatter) }
 
-                // completion уже на main, доп. диспатч не обязателен
                 self.photos.append(contentsOf: newPhotos)
                 self.lastLoadedPage = nextPage
 
@@ -69,12 +65,10 @@ final class ImagesListService {
         self.task = task
     }
 
-    /// Устанавливает/снимает лайк для фото
     func changeLike(photoId: String, isLike: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let request = makeLikeRequest(photoId: photoId, isLike: isLike) else {
-            let error = URLError(.badURL)
             print("[ImagesListService.changeLike]: invalidRequest for photoId \(photoId), isLike = \(isLike)")
-            completion(.failure(error))
+            completion(.failure(URLError(.badURL)))
             return
         }
 
@@ -83,11 +77,9 @@ final class ImagesListService {
 
             switch result {
             case .success:
-                // Все операции с photos — на главном потоке (completion уже на main)
                 if let index = self.photos.firstIndex(where: { $0.id == photoId }) {
                     let photo = self.photos[index]
 
-                    // Копия элемента с инвертированным isLiked
                     let newPhoto = Photo(
                         id: photo.id,
                         size: photo.size,
@@ -98,10 +90,8 @@ final class ImagesListService {
                         isLiked: !photo.isLiked
                     )
 
-                    // Заменяем элемент в массиве
                     self.photos = self.photos.withReplaced(itemAt: index, newValue: newPhoto)
 
-                    // Уведомляем наблюдателей
                     NotificationCenter.default.post(
                         name: ImagesListService.didChangeNotification,
                         object: self,
@@ -117,11 +107,9 @@ final class ImagesListService {
             }
         }
 
-        // urlSession.data(for:) из расширения уже вызывает resume(), повторно резюмить не нужно
         _ = task
     }
 
-    /// Сброс состояния сервиса при logout
     func reset() {
         task?.cancel()
         task = nil

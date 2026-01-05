@@ -22,7 +22,6 @@ final class ImagesListCell: UITableViewCell {
     
     override func prepareForReuse() {
         super.prepareForReuse()
-        // отменяем загрузку изображения
         cellImage.kf.cancelDownloadTask()
         cellImage.image = nil
         dateLabel.text = nil

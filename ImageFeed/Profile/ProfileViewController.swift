@@ -104,15 +104,20 @@ final class ProfileViewController: UIViewController {
     @objc private func didTapLogoutButton() {
         let alert = UIAlertController(
             title: "Пока, пока!",
-            message: "Вы уверены, что хотите выйти?",
+            message: "Уверены, что хотите выйти?",
             preferredStyle: .alert
         )
 
-        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        // Левая кнопка — "Нет" (отмена)
+        let noAction = UIAlertAction(title: "Нет", style: .cancel, handler: nil)
 
-        alert.addAction(UIAlertAction(title: "Да", style: .destructive) { [weak self] _ in
+        // Правая кнопка — "Да" (подтверждение выхода)
+        let yesAction = UIAlertAction(title: "Да", style: .default) { [weak self] _ in
             self?.performLogout()
-        })
+        }
+
+        alert.addAction(noAction)
+        alert.addAction(yesAction)
 
         present(alert, animated: true)
     }

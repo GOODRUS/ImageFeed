@@ -19,10 +19,8 @@ final class ImagesListViewController: UIViewController {
 
     private let imagesListService = ImagesListService.shared
 
-    // Локальный массив фотографий для таблицы
     private var photos: [Photo] = []
 
-    // Observer для нотификаций сервиса
     private var imagesListServiceObserver: NSObjectProtocol?
 
     private lazy var dateFormatter: DateFormatter = {
@@ -39,7 +37,6 @@ final class ImagesListViewController: UIViewController {
         tableView.backgroundColor = UIColor(red: 0.102, green: 0.106, blue: 0.133, alpha: 1) // #1A1B22
         tableView.contentInset = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
 
-        // подписка на обновления из ImagesListService
         imagesListServiceObserver = NotificationCenter.default.addObserver(
             forName: ImagesListService.didChangeNotification,
             object: nil,
@@ -48,7 +45,6 @@ final class ImagesListViewController: UIViewController {
             self?.updateTableViewAnimated()
         }
 
-        // загрузка первой страницы
         imagesListService.fetchPhotosNextPage()
     }
 
@@ -86,10 +82,8 @@ private extension ImagesListViewController {
 
         cell.gradientView.backgroundColor = UIColor.clear
 
-        // Placeholder из ассетов (выгруженный из Figma)
         let placeholderImage = UIImage(named: "photo_placeholder")
 
-        // Включаем индикатор активности
         cell.cellImage.kf.indicatorType = .activity
 
         if let url = URL(string: photo.thumbImageURL) {
@@ -102,7 +96,6 @@ private extension ImagesListViewController {
                 ]
             )
         } else {
-            // если url невалиден — ставим заглушку
             cell.cellImage.image = placeholderImage
         }
 
@@ -124,12 +117,17 @@ private extension ImagesListViewController {
         let photo = photos[index]
         let newIsLike = !photo.isLiked
 
+        sender.isEnabled = false
+        UIBlockingProgressHUD.show()
+
         imagesListService.changeLike(photoId: photo.id, isLike: newIsLike) { [weak self] result in
-            guard let self = self else { return }
+            guard self != nil else { return }
+
+            UIBlockingProgressHUD.dismiss()
+            sender.isEnabled = true
+
             switch result {
             case .success:
-                // состояние photos обновится в сервисе и придёт нотификация,
-                // updateTableViewAnimated() перерисует таблицу
                 break
             case .failure(let error):
                 print("[ImagesListViewController.didTapLikeButton]: like failed - \(error.localizedDescription)")

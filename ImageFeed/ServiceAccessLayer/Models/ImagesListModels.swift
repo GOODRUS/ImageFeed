@@ -46,9 +46,6 @@ struct PhotoResult: Decodable {
 struct UrlsResult: Decodable {
     let thumb: String
     let full: String
-    // при необходимости можно добавить small/regular:
-    // let small: String
-    // let regular: String
 }
 
 // MARK: - Mapping PhotoResult -> Photo
