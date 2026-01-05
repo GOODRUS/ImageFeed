@@ -13,9 +13,11 @@ enum NetworkError: Error {
     case urlSessionError
     case invalidRequest
     case decodingError(Error)
+    case requestAlreadyInProgress
 }
 
 extension URLSession {
+    
     func data(
         for request: URLRequest,
         completion: @escaping (Result<Data, Error>) -> Void
@@ -25,21 +27,36 @@ extension URLSession {
                 completion(result)
             }
         }
-        
-        let task = dataTask(with: request, completionHandler: { data, response, error in
-            if let data = data, let response = response, let statusCode = (response as? HTTPURLResponse)?.statusCode {
-                if 200 ..< 300 ~= statusCode {
-                    fulfillCompletionOnTheMainThread(.success(data))
-                } else {
-                    fulfillCompletionOnTheMainThread(.failure(NetworkError.httpStatusCode(statusCode)))
-                }
-            } else if let error = error {
+
+        let task = dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[URLSession.data]: urlRequestError - \(error.localizedDescription) for \(request.url?.absoluteString ?? "")")
                 fulfillCompletionOnTheMainThread(.failure(NetworkError.urlRequestError(error)))
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("[URLSession.data]: urlSessionError - no HTTPURLResponse for \(request.url?.absoluteString ?? "")")
+                fulfillCompletionOnTheMainThread(.failure(NetworkError.urlSessionError))
+                return
+            }
+
+            let statusCode = httpResponse.statusCode
+            guard 200 ..< 300 ~= statusCode else {
+                print("[URLSession.data]: httpStatusCode - \(statusCode) for \(request.url?.absoluteString ?? "")")
+                fulfillCompletionOnTheMainThread(.failure(NetworkError.httpStatusCode(statusCode)))
+                return
+            }
+
+            if let data = data {
+                fulfillCompletionOnTheMainThread(.success(data))
             } else {
+                print("[URLSession.data]: urlSessionError - nil data for \(request.url?.absoluteString ?? "")")
                 fulfillCompletionOnTheMainThread(.failure(NetworkError.urlSessionError))
             }
-        })
-        
+        }
+
+        task.resume()
         return task
     }
 }
