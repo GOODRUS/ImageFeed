@@ -20,10 +20,6 @@ final class ProfileImageService {
         self.urlSession = urlSession
     }
 
-    private init() {
-        self.urlSession = .shared
-    }
-
     // MARK: - Networking
 
     func fetchProfileImageURL(
@@ -62,6 +58,12 @@ final class ProfileImageService {
         }
 
         self.task = task
+    }
+
+    func reset() {
+        task?.cancel()
+        task = nil
+        avatarURL = nil
     }
 
     // MARK: - Private

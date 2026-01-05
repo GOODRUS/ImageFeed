@@ -41,7 +41,8 @@ final class SplashViewController: UIViewController {
         let token = storage.token
 
         #if DEBUG
-        print("[Splash] token present: \(token != nil && !(token!.isEmpty))")
+        let hasToken = (token?.isEmpty == false)
+        print("[Splash] token present: \(hasToken)")
         #endif
 
         guard let token = token, !token.isEmpty else {

@@ -102,6 +102,40 @@ final class ProfileViewController: UIViewController {
     // MARK: - Actions
 
     @objc private func didTapLogoutButton() {
+        let alert = UIAlertController(
+            title: "Пока, пока!",
+            message: "Вы уверены, что хотите выйти?",
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+
+        alert.addAction(UIAlertAction(title: "Да", style: .destructive) { [weak self] _ in
+            self?.performLogout()
+        })
+
+        present(alert, animated: true)
+    }
+
+    private func performLogout() {
+        // 1. Чистим токен, данные профиля, аватар, список фотографий, куки WebView
+        ProfileLogoutService.shared.logout()
+        // 2. Возвращаемся на стартовый экран (SplashViewController)
+        switchToSplashScreen()
+    }
+
+    private func switchToSplashScreen() {
+        guard
+            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+            let window = windowScene.windows.first
+        else {
+            assertionFailure("Unable to get key window for logout")
+            return
+        }
+
+        let splashViewController = SplashViewController()
+        window.rootViewController = splashViewController
+        window.makeKeyAndVisible()
     }
 
     // MARK: - Private Methods

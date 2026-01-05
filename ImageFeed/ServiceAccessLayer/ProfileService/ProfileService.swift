@@ -19,10 +19,6 @@ final class ProfileService {
         self.urlSession = urlSession
     }
 
-    private init() {
-        self.urlSession = .shared
-    }
-
     // MARK: - Networking
 
     func fetchProfile(_ token: String, completion: @escaping (Result<Profile, Error>) -> Void) {
@@ -64,6 +60,12 @@ final class ProfileService {
         }
 
         self.task = task
+    }
+
+    func reset() {
+        task?.cancel()
+        task = nil
+        profile = nil
     }
 
     private func makeProfileRequest(token: String) -> URLRequest? {
