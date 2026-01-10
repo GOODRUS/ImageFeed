@@ -7,12 +7,21 @@
 
 import Foundation
 
+// MARK: - ImagesListService
+
 final class ImagesListService {
+
+    // MARK: - Static
+
     static let shared = ImagesListService()
 
-    static let didChangeNotification = Notification.Name(rawValue: "ImagesListServiceDidChange")
+    static let didChangeNotification = Notification.Name("ImagesListServiceDidChange")
+
+    // MARK: - Public State
 
     private(set) var photos: [Photo] = []
+
+    // MARK: - Private State
 
     private var lastLoadedPage: Int?
     private var task: URLSessionTask?
@@ -27,8 +36,7 @@ final class ImagesListService {
     // MARK: - Public
 
     func fetchPhotosNextPage() {
-
-        if task != nil {
+        guard task == nil else {
             return
         }
 
@@ -40,7 +48,7 @@ final class ImagesListService {
         }
 
         let task = objectTask(for: request) { [weak self] (result: Result<[PhotoResult], Error>) in
-            guard let self = self else { return }
+            guard let self else { return }
             defer { self.task = nil }
 
             switch result {
@@ -48,13 +56,13 @@ final class ImagesListService {
                 let dateFormatter = ISO8601DateFormatter()
                 let newPhotos = photoResults.map { Photo(from: $0, dateFormatter: dateFormatter) }
 
-                self.photos.append(contentsOf: newPhotos)
-                self.lastLoadedPage = nextPage
+                photos.append(contentsOf: newPhotos)
+                lastLoadedPage = nextPage
 
                 NotificationCenter.default.post(
                     name: ImagesListService.didChangeNotification,
                     object: self,
-                    userInfo: ["photos": self.photos]
+                    userInfo: ["photos": photos]
                 )
 
             case .failure(let error):
@@ -65,7 +73,11 @@ final class ImagesListService {
         self.task = task
     }
 
-    func changeLike(photoId: String, isLike: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
+    func changeLike(
+        photoId: String,
+        isLike: Bool,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
         guard let request = makeLikeRequest(photoId: photoId, isLike: isLike) else {
             print("[ImagesListService.changeLike]: invalidRequest for photoId \(photoId), isLike = \(isLike)")
             completion(.failure(URLError(.badURL)))
@@ -73,13 +85,12 @@ final class ImagesListService {
         }
 
         let task = urlSession.data(for: request) { [weak self] result in
-            guard let self = self else { return }
+            guard let self else { return }
 
             switch result {
             case .success:
-                if let index = self.photos.firstIndex(where: { $0.id == photoId }) {
-                    let photo = self.photos[index]
-
+                if let index = photos.firstIndex(where: { $0.id == photoId }) {
+                    let photo = photos[index]
                     let newPhoto = Photo(
                         id: photo.id,
                         size: photo.size,
@@ -90,12 +101,12 @@ final class ImagesListService {
                         isLiked: !photo.isLiked
                     )
 
-                    self.photos = self.photos.withReplaced(itemAt: index, newValue: newPhoto)
+                    photos = photos.withReplaced(itemAt: index, newValue: newPhoto)
 
                     NotificationCenter.default.post(
                         name: ImagesListService.didChangeNotification,
                         object: self,
-                        userInfo: ["photos": self.photos]
+                        userInfo: ["photos": photos]
                     )
                 }
 
@@ -118,7 +129,7 @@ final class ImagesListService {
     }
 }
 
-// MARK: - Private
+// MARK: - Private: Requests
 
 private extension ImagesListService {
     func makePhotosRequest(page: Int) -> URLRequest? {
@@ -171,7 +182,11 @@ private extension ImagesListService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         return request
     }
+}
 
+// MARK: - Private: Network helper
+
+private extension ImagesListService {
     func objectTask<T: Decodable>(
         for request: URLRequest,
         completion: @escaping (Result<T, Error>) -> Void

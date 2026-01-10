@@ -8,10 +8,19 @@
 import Foundation
 import WebKit
 
+// MARK: - ProfileLogoutService
+
 final class ProfileLogoutService {
+
+    // MARK: - Static
+
     static let shared = ProfileLogoutService()
 
+    // MARK: - Init
+
     private init() { }
+
+    // MARK: - Public
 
     func logout() {
         OAuth2TokenStorage.shared.token = nil
@@ -20,10 +29,12 @@ final class ProfileLogoutService {
         ImagesListService.shared.reset()
         cleanCookies()
     }
+}
 
-    // MARK: - Private
+// MARK: - Private
 
-    private func cleanCookies() {
+private extension ProfileLogoutService {
+    func cleanCookies() {
         HTTPCookieStorage.shared.removeCookies(since: Date.distantPast)
 
         WKWebsiteDataStore.default().fetchDataRecords(

@@ -8,43 +8,47 @@
 import UIKit
 import WebKit
 
+// MARK: - WebViewConstants
+
 enum WebViewConstants {
     static let unsplashAuthorizeURLString = "https://unsplash.com/oauth/authorize"
 }
+
+// MARK: - WebViewViewControllerDelegate
 
 protocol WebViewViewControllerDelegate: AnyObject {
     func webViewViewController(_ vc: WebViewViewController, didAuthenticateWithCode code: String)
     func webViewViewControllerDidCancel(_ vc: WebViewViewController)
 }
 
+// MARK: - WebViewViewController
+
 final class WebViewViewController: UIViewController {
 
+    // MARK: - IBOutlets
+
     @IBOutlet private weak var webView: WKWebView!
-    @IBOutlet private var progressView: UIProgressView!
+    @IBOutlet private weak var progressView: UIProgressView!
+
+    // MARK: - Dependencies
 
     weak var delegate: WebViewViewControllerDelegate?
 
-    private let storage = OAuth2TokenStorage.shared
+    // MARK: - State
 
     private var estimatedProgressObservation: NSKeyValueObservation?
 
+    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        webView.navigationDelegate = self
+        setupWebView()
         loadAuthView()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-
-        estimatedProgressObservation = webView.observe(
-            \.estimatedProgress,
-            options: [.new]
-        ) { [weak self] _, _ in
-            self?.updateProgress()
-        }
-
+        observeEstimatedProgress()
         updateProgress()
     }
 
@@ -52,13 +56,29 @@ final class WebViewViewController: UIViewController {
         super.viewWillDisappear(animated)
         estimatedProgressObservation = nil
     }
+}
 
-    private func updateProgress() {
-        progressView.progress = Float(webView.estimatedProgress)
-        progressView.isHidden = fabs(webView.estimatedProgress - 1.0) <= 0.0001
+// MARK: - Setup
+
+private extension WebViewViewController {
+    func setupWebView() {
+        webView.navigationDelegate = self
     }
 
-    private func loadAuthView() {
+    func observeEstimatedProgress() {
+        estimatedProgressObservation = webView.observe(
+            \.estimatedProgress,
+            options: [.new]
+        ) { [weak self] _, _ in
+            self?.updateProgress()
+        }
+    }
+}
+
+// MARK: - Loading
+
+private extension WebViewViewController {
+    func loadAuthView() {
         guard var urlComponents = URLComponents(string: WebViewConstants.unsplashAuthorizeURLString) else {
             return
         }
@@ -78,6 +98,29 @@ final class WebViewViewController: UIViewController {
         webView.load(request)
 
         updateProgress()
+    }
+
+    func updateProgress() {
+        progressView.progress = Float(webView.estimatedProgress)
+        progressView.isHidden = fabs(webView.estimatedProgress - 1.0) <= 0.0001
+    }
+}
+
+// MARK: - Helpers
+
+private extension WebViewViewController {
+    func code(from navigationAction: WKNavigationAction) -> String? {
+        guard
+            let url = navigationAction.request.url,
+            let urlComponents = URLComponents(string: url.absoluteString),
+            urlComponents.path == "/oauth/authorize/native",
+            let items = urlComponents.queryItems,
+            let codeItem = items.first(where: { $0.name == "code" })
+        else {
+            return nil
+        }
+
+        return codeItem.value
     }
 }
 
@@ -101,27 +144,21 @@ extension WebViewViewController: WKNavigationDelegate {
         updateProgress()
     }
 
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    func webView(
+        _ webView: WKWebView,
+        didFail navigation: WKNavigation!,
+        withError error: Error
+    ) {
         print("[WebViewViewController.webView.didFail]: navigation error - \(error.localizedDescription)")
         updateProgress()
     }
 
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    func webView(
+        _ webView: WKWebView,
+        didFailProvisionalNavigation navigation: WKNavigation!,
+        withError error: Error
+    ) {
         print("[WebViewViewController.webView.didFailProvisionalNavigation]: provisional navigation error - \(error.localizedDescription)")
         updateProgress()
-    }
-
-    private func code(from navigationAction: WKNavigationAction) -> String? {
-        guard
-            let url = navigationAction.request.url,
-            let urlComponents = URLComponents(string: url.absoluteString),
-            urlComponents.path == "/oauth/authorize/native",
-            let items = urlComponents.queryItems,
-            let codeItem = items.first(where: { $0.name == "code" })
-        else {
-            return nil
-        }
-
-        return codeItem.value
     }
 }

@@ -12,8 +12,9 @@ import Kingfisher
 
 final class SingleImageViewController: UIViewController {
 
-    var imageURL: URL?
+    // MARK: - State
 
+    var imageURL: URL?
     private var kfTask: DownloadTask?
 
     // MARK: - IBOutlets
@@ -21,31 +22,12 @@ final class SingleImageViewController: UIViewController {
     @IBOutlet private weak var imageView: UIImageView!
     @IBOutlet private weak var scrollView: UIScrollView!
 
-    @IBAction func didTapBackButton() {
-        dismiss(animated: true, completion: nil)
-    }
-
-    @IBAction func didTapShareButton(_ sender: UIButton) {
-        guard let image = imageView.image else { return }
-        let share = UIActivityViewController(
-            activityItems: [image],
-            applicationActivities: nil
-        )
-        present(share, animated: true, completion: nil)
-    }
-
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        scrollView.delegate = self
-
-        scrollView.minimumZoomScale = 1.0
-        scrollView.maximumZoomScale = 4.0
-
-        imageView.contentMode = .scaleAspectFit
-
+        setupScrollView()
+        setupImageView()
         loadImage()
     }
 
@@ -60,9 +42,40 @@ final class SingleImageViewController: UIViewController {
         kfTask?.cancel()
     }
 
-    // MARK: - Private
+    // MARK: - IBActions
 
-    private func loadImage() {
+    @IBAction private func didTapBackButton() {
+        dismiss(animated: true, completion: nil)
+    }
+
+    @IBAction private func didTapShareButton(_ sender: UIButton) {
+        guard let image = imageView.image else { return }
+        let share = UIActivityViewController(
+            activityItems: [image],
+            applicationActivities: nil
+        )
+        present(share, animated: true, completion: nil)
+    }
+}
+
+// MARK: - Setup
+
+private extension SingleImageViewController {
+    func setupScrollView() {
+        scrollView.delegate = self
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 4.0
+    }
+
+    func setupImageView() {
+        imageView.contentMode = .scaleAspectFit
+    }
+}
+
+// MARK: - Image Loading
+
+private extension SingleImageViewController {
+    func loadImage() {
         guard let url = imageURL else { return }
 
         let placeholder = UIImage(named: "photo_placeholder")
@@ -86,17 +99,22 @@ final class SingleImageViewController: UIViewController {
             }
         }
     }
+}
 
-    private func rescaleAndCenterImageInScrollView(image: UIImage) {
+// MARK: - Zoom & Layout
+
+private extension SingleImageViewController {
+    func rescaleAndCenterImageInScrollView(image: UIImage) {
         view.layoutIfNeeded()
 
         let scrollViewSize = scrollView.bounds.size
         let imageSize = image.size
 
-        guard imageSize.width > 0,
-              imageSize.height > 0,
-              scrollViewSize.width > 0,
-              scrollViewSize.height > 0
+        guard
+            imageSize.width > 0,
+            imageSize.height > 0,
+            scrollViewSize.width > 0,
+            scrollViewSize.height > 0
         else {
             return
         }
@@ -116,7 +134,7 @@ final class SingleImageViewController: UIViewController {
         centerImage()
     }
 
-    private func centerImage() {
+    func centerImage() {
         let scrollViewSize = scrollView.bounds.size
         let contentSize = scrollView.contentSize
 

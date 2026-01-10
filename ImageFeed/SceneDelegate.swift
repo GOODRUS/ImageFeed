@@ -7,9 +7,15 @@
 
 import UIKit
 
+// MARK: - SceneDelegate
+
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
+    // MARK: - Properties
+
     var window: UIWindow?
+
+    // MARK: - UIWindowSceneDelegate
 
     func scene(
         _ scene: UIScene,
@@ -21,7 +27,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 }
 
-// MARK: - Private
+// MARK: - Setup
 
 private extension SceneDelegate {
     func setupWindow(with scene: UIWindowScene) {

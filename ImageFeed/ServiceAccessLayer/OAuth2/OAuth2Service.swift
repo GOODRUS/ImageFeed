@@ -7,11 +7,20 @@
 
 import Foundation
 
+// MARK: - OAuth2Service
+
 final class OAuth2Service {
+
+    // MARK: - Static
+
     static let shared = OAuth2Service()
+
+    // MARK: - Dependencies
 
     private let dataStorage = OAuth2TokenStorage.shared
     private let urlSession = URLSession.shared
+
+    // MARK: - Public State
 
     private(set) var authToken: String? {
         get { dataStorage.token }
@@ -23,9 +32,16 @@ final class OAuth2Service {
     private var currentTask: URLSessionTask?
     private var currentCode: String?
 
+    // MARK: - Init
+
     private init() { }
 
-    func fetchOAuthToken(_ code: String, completion: @escaping (Result<String, Error>) -> Void) {
+    // MARK: - Public
+
+    func fetchOAuthToken(
+        _ code: String,
+        completion: @escaping (Result<String, Error>) -> Void
+    ) {
         if let task = currentTask {
             if currentCode == code {
                 let error = NetworkError.requestAlreadyInProgress
@@ -49,16 +65,17 @@ final class OAuth2Service {
         currentCode = code
 
         let task = objectTask(for: request) { [weak self] (result: Result<OAuthTokenResponseBody, Error>) in
-            guard let self = self else { return }
+            guard let self else { return }
 
-            self.currentTask = nil
-            self.currentCode = nil
+            currentTask = nil
+            currentCode = nil
 
             switch result {
             case .success(let body):
                 let authToken = body.accessToken
                 self.authToken = authToken
                 completion(.success(authToken))
+
             case .failure(let error):
                 print("[OAuth2Service.fetchOAuthToken]: failure - \(error.localizedDescription) for code \(code)")
                 completion(.failure(error))
@@ -67,8 +84,12 @@ final class OAuth2Service {
 
         currentTask = task
     }
+}
 
-    private func makeOAuthTokenRequest(code: String) -> URLRequest? {
+// MARK: - Private: Requests
+
+private extension OAuth2Service {
+    func makeOAuthTokenRequest(code: String) -> URLRequest? {
         guard let url = URL(string: "https://unsplash.com/oauth/token") else {
             return nil
         }
@@ -97,10 +118,12 @@ final class OAuth2Service {
 
         return request
     }
+}
 
-    // MARK: - Models
+// MARK: - Private: Models
 
-    private struct OAuthTokenResponseBody: Codable {
+private extension OAuth2Service {
+    struct OAuthTokenResponseBody: Codable {
         let accessToken: String
 
         enum CodingKeys: String, CodingKey {
@@ -109,7 +132,7 @@ final class OAuth2Service {
     }
 }
 
-// MARK: - Network helper
+// MARK: - Private: Network helper
 
 private extension OAuth2Service {
     func objectTask<T: Decodable>(
