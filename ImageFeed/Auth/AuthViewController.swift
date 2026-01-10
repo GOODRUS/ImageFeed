@@ -8,16 +8,26 @@
 import UIKit
 import ProgressHUD
 
+// MARK: - AuthViewControllerDelegate
+
 protocol AuthViewControllerDelegate: AnyObject {
     func authViewController(_ vc: AuthViewController, didAuthenticateWithToken token: String)
 }
 
+// MARK: - AuthViewController
+
 final class AuthViewController: UIViewController {
 
+    // MARK: - Dependencies
+
     weak var delegate: AuthViewControllerDelegate?
+    private let oauth2Service = OAuth2Service.shared
+
+    // MARK: - Constants
 
     private let showWebViewSegueIdentifier = "ShowWebView"
-    private let oauth2Service = OAuth2Service.shared
+
+    // MARK: - Lifecycle
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -26,26 +36,41 @@ final class AuthViewController: UIViewController {
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == showWebViewSegueIdentifier {
-            guard
-                let webViewViewController = segue.destination as? WebViewViewController
-            else {
-                assertionFailure("Failed to prepare for \(showWebViewSegueIdentifier)")
-                return
-            }
-            webViewViewController.delegate = self
+            prepareWebViewSegue(segue)
         } else {
             super.prepare(for: segue, sender: sender)
         }
     }
+}
 
-    private func configureBackButton() {
+// MARK: - Navigation
+
+private extension AuthViewController {
+    func prepareWebViewSegue(_ segue: UIStoryboardSegue) {
+        guard let webViewViewController = segue.destination as? WebViewViewController else {
+            assertionFailure("Failed to prepare for \(showWebViewSegueIdentifier)")
+            return
+        }
+        webViewViewController.delegate = self
+    }
+}
+
+// MARK: - UI
+
+private extension AuthViewController {
+    func configureBackButton() {
         navigationController?.navigationBar.backIndicatorImage = UIImage(resource: .navBackButton)
         navigationController?.navigationBar.backIndicatorTransitionMaskImage = UIImage(named: "nav_back_button")
-        navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
+        navigationItem.backBarButtonItem = UIBarButtonItem(
+            title: "",
+            style: .plain,
+            target: nil,
+            action: nil
+        )
         navigationItem.backBarButtonItem?.tintColor = UIColor(resource: .ypBlack)
     }
 
-    private func showAuthErrorAlert() {
+    func showAuthErrorAlert() {
         let alert = UIAlertController(
             title: "Что-то пошло не так(",
             message: "Не удалось войти в систему",
@@ -54,12 +79,16 @@ final class AuthViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "Ок", style: .default))
         present(alert, animated: true)
     }
+}
 
-    private func showBlockingHUD() {
+// MARK: - Progress HUD
+
+private extension AuthViewController {
+    func showBlockingHUD() {
         UIBlockingProgressHUD.show()
     }
 
-    private func hideBlockingHUD() {
+    func hideBlockingHUD() {
         UIBlockingProgressHUD.dismiss()
     }
 }
@@ -83,7 +112,6 @@ extension AuthViewController: WebViewViewControllerDelegate {
                     self.dismiss(animated: true) {
                         self.delegate?.authViewController(self, didAuthenticateWithToken: token)
                     }
-
                 case .failure:
                     self.showAuthErrorAlert()
                 }

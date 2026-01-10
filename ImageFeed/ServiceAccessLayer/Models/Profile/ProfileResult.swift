@@ -1,18 +1,11 @@
 //
-//  ProfileModels.swift
+//  ProfileResult.swift
 //  ImageFeed
 //
-//  Created by Дмитрий Шиляев on 04.01.2026.
+//  Created by Дмитрий Шиляев on 10.01.2026.
 //
 
 import Foundation
-
-struct Profile {
-    let username: String
-    let name: String
-    let loginName: String
-    let bio: String?
-}
 
 struct ProfileResult: Codable {
     let username: String
@@ -23,7 +16,7 @@ struct ProfileResult: Codable {
     private enum CodingKeys: String, CodingKey {
         case username
         case firstName = "first_name"
-        case lastName = "last_name"
+        case lastName  = "last_name"
         case bio
     }
 }

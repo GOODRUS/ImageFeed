@@ -8,31 +8,44 @@
 import Foundation
 import SwiftKeychainWrapper
 
-final class OAuth2TokenStorage { static let shared = OAuth2TokenStorage()
-private init() {}
+// MARK: - OAuth2TokenStorage
 
-private let tokenKey = "OAuth2BearerToken"
+final class OAuth2TokenStorage {
 
-var token: String? {
-    get {
-        let value = KeychainWrapper.standard.string(forKey: tokenKey)
-        #if DEBUG
-        print("[OAuth2TokenStorage.get] token = \(String(describing: value))")
-        #endif
-        return value
-    }
-    set {
-        if let token = newValue {
-            let ok = KeychainWrapper.standard.set(token, forKey: tokenKey)
+    // MARK: - Static
+
+    static let shared = OAuth2TokenStorage()
+
+    // MARK: - Init
+
+    private init() { }
+
+    // MARK: - Private
+
+    private let tokenKey = "OAuth2BearerToken"
+
+    // MARK: - Public
+
+    var token: String? {
+        get {
+            let value = KeychainWrapper.standard.string(forKey: tokenKey)
             #if DEBUG
-            print("[OAuth2TokenStorage.set] set token = \(token) result = \(ok)")
+            print("[OAuth2TokenStorage.get] token = \(String(describing: value))")
             #endif
-        } else {
-            let ok = KeychainWrapper.standard.removeObject(forKey: tokenKey)
-            #if DEBUG
-            print("[OAuth2TokenStorage.remove] removed token result = \(ok)")
-            #endif
+            return value
+        }
+        set {
+            if let token = newValue {
+                let ok = KeychainWrapper.standard.set(token, forKey: tokenKey)
+                #if DEBUG
+                print("[OAuth2TokenStorage.set] set token = \(token) result = \(ok)")
+                #endif
+            } else {
+                let ok = KeychainWrapper.standard.removeObject(forKey: tokenKey)
+                #if DEBUG
+                print("[OAuth2TokenStorage.remove] removed token result = \(ok)")
+                #endif
+            }
         }
     }
-}
 }

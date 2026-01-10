@@ -7,6 +7,8 @@
 
 import Foundation
 
+// MARK: - NetworkError
+
 enum NetworkError: Error {
     case httpStatusCode(Int)
     case urlRequestError(Error)
@@ -16,13 +18,16 @@ enum NetworkError: Error {
     case requestAlreadyInProgress
 }
 
+// MARK: - URLSession + Data
+
 extension URLSession {
-    
+
+    @discardableResult
     func data(
         for request: URLRequest,
         completion: @escaping (Result<Data, Error>) -> Void
     ) -> URLSessionTask {
-        let fulfillCompletionOnTheMainThread: (Result<Data, Error>) -> Void = { result in
+        let fulfillOnMain: (Result<Data, Error>) -> Void = { result in
             DispatchQueue.main.async {
                 completion(result)
             }
@@ -31,29 +36,30 @@ extension URLSession {
         let task = dataTask(with: request) { data, response, error in
             if let error = error {
                 print("[URLSession.data]: urlRequestError - \(error.localizedDescription) for \(request.url?.absoluteString ?? "")")
-                fulfillCompletionOnTheMainThread(.failure(NetworkError.urlRequestError(error)))
+                fulfillOnMain(.failure(NetworkError.urlRequestError(error)))
                 return
             }
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("[URLSession.data]: urlSessionError - no HTTPURLResponse for \(request.url?.absoluteString ?? "")")
-                fulfillCompletionOnTheMainThread(.failure(NetworkError.urlSessionError))
+                fulfillOnMain(.failure(NetworkError.urlSessionError))
                 return
             }
 
             let statusCode = httpResponse.statusCode
-            guard 200 ..< 300 ~= statusCode else {
+            guard (200..<300).contains(statusCode) else {
                 print("[URLSession.data]: httpStatusCode - \(statusCode) for \(request.url?.absoluteString ?? "")")
-                fulfillCompletionOnTheMainThread(.failure(NetworkError.httpStatusCode(statusCode)))
+                fulfillOnMain(.failure(NetworkError.httpStatusCode(statusCode)))
                 return
             }
 
-            if let data = data {
-                fulfillCompletionOnTheMainThread(.success(data))
-            } else {
+            guard let data else {
                 print("[URLSession.data]: urlSessionError - nil data for \(request.url?.absoluteString ?? "")")
-                fulfillCompletionOnTheMainThread(.failure(NetworkError.urlSessionError))
+                fulfillOnMain(.failure(NetworkError.urlSessionError))
+                return
             }
+
+            fulfillOnMain(.success(data))
         }
 
         task.resume()

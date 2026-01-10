@@ -7,10 +7,16 @@
 
 import UIKit
 
+// MARK: - SplashViewController
+
 final class SplashViewController: UIViewController {
+
+    // MARK: - Dependencies
 
     private let storage = OAuth2TokenStorage.shared
     private let profileService = ProfileService.shared
+
+    // MARK: - UI
 
     private let logoImageView: UIImageView = {
         let iv = UIImageView()
@@ -29,19 +35,63 @@ final class SplashViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        view.addSubview(logoImageView)
-        setupConstraints()
+        setupUI()
         setupDebugClearTokenButtonIfNeeded()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        checkAuthentication()
+    }
 
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        .lightContent
+    }
+}
+
+// MARK: - Setup
+
+private extension SplashViewController {
+    func setupUI() {
+        view.addSubview(logoImageView)
+        setupConstraints()
+    }
+
+    func setupConstraints() {
+        let safeArea = view.safeAreaLayoutGuide
+        NSLayoutConstraint.activate([
+            logoImageView.centerXAnchor.constraint(equalTo: safeArea.centerXAnchor),
+            logoImageView.centerYAnchor.constraint(equalTo: safeArea.centerYAnchor)
+        ])
+    }
+
+    func setupDebugClearTokenButtonIfNeeded() {
+        #if DEBUG
+        let clearButton = UIButton(type: .system)
+        clearButton.translatesAutoresizingMaskIntoConstraints = false
+        clearButton.setTitle("Clear Token (Debug)", for: .normal)
+        clearButton.setTitleColor(.white, for: .normal)
+        clearButton.addTarget(self, action: #selector(debugClearTokenTapped), for: .touchUpInside)
+
+        view.addSubview(clearButton)
+
+        NSLayoutConstraint.activate([
+            clearButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            clearButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+        ])
+        #endif
+    }
+}
+
+// MARK: - Auth Flow
+
+private extension SplashViewController {
+    func checkAuthentication() {
         let token = storage.token
 
         #if DEBUG
-        print("[Splash] token present: \(token != nil && !(token!.isEmpty))")
+        let hasToken = (token?.isEmpty == false)
+        print("[Splash] token present: \(hasToken)")
         #endif
 
         guard let token = token, !token.isEmpty else {
@@ -52,6 +102,10 @@ final class SplashViewController: UIViewController {
             return
         }
 
+        fetchProfile(with: token)
+    }
+
+    func fetchProfile(with token: String) {
         #if DEBUG
         print("[Splash] token present — validating via fetchProfile")
         #endif
@@ -70,41 +124,45 @@ final class SplashViewController: UIViewController {
                 self.switchToTabBarController()
 
             case .failure(let error):
-                if case NetworkError.urlRequestError(let urlError) = error,
-                   (urlError as NSError).code == NSURLErrorCancelled {
-                    #if DEBUG
-                    print("[Splash] fetchProfile cancelled - ignoring")
-                    #endif
-                    return
-                }
-
-                if case NetworkError.httpStatusCode(let status) = error, status == 401 {
-                    #if DEBUG
-                    print("[Splash] fetchProfile unauthorized (401) - clearing token and presenting Auth")
-                    #endif
-                    self.storage.token = nil
-                    self.presentAuthControllerIfNeeded()
-                    return
-                }
-
-                #if DEBUG
-                print("[Splash] fetchProfile non-auth error: \(error.localizedDescription)")
-                #endif
+                self.handleProfileFetchError(error)
             }
         }
     }
 
-    override var preferredStatusBarStyle: UIStatusBarStyle {
-        .lightContent
+    func handleProfileFetchError(_ error: Error) {
+        if case NetworkError.urlRequestError(let urlError) = error,
+           (urlError as NSError).code == NSURLErrorCancelled {
+            #if DEBUG
+            print("[Splash] fetchProfile cancelled - ignoring")
+            #endif
+            return
+        }
+
+        if case NetworkError.httpStatusCode(let status) = error, status == 401 {
+            #if DEBUG
+            print("[Splash] fetchProfile unauthorized (401) - clearing token and presenting Auth")
+            #endif
+            storage.token = nil
+            presentAuthControllerIfNeeded()
+            return
+        }
+
+        #if DEBUG
+        print("[Splash] fetchProfile non-auth error: \(error.localizedDescription)")
+        #endif
     }
+}
 
-    // MARK: - UI / Navigation
+// MARK: - Navigation
 
-    private func presentAuthControllerIfNeeded() {
+private extension SplashViewController {
+    func presentAuthControllerIfNeeded() {
         if presentedViewController is AuthViewController { return }
 
         let storyboard = UIStoryboard(name: "Main", bundle: .main)
-        guard let authVC = storyboard.instantiateViewController(withIdentifier: "AuthViewController") as? AuthViewController else {
+        guard
+            let authVC = storyboard.instantiateViewController(withIdentifier: "AuthViewController") as? AuthViewController
+        else {
             assertionFailure("AuthViewController storyboard ID not set or wrong type")
             return
         }
@@ -114,7 +172,7 @@ final class SplashViewController: UIViewController {
         present(authVC, animated: true)
     }
 
-    private func switchToTabBarController() {
+    func switchToTabBarController() {
         guard
             let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
             let window = windowScene.windows.first
@@ -124,7 +182,9 @@ final class SplashViewController: UIViewController {
         }
 
         let storyboard = UIStoryboard(name: "Main", bundle: .main)
-        guard let tabBarController = storyboard.instantiateViewController(withIdentifier: "TabBarViewController") as? UITabBarController else {
+        guard
+            let tabBarController = storyboard.instantiateViewController(withIdentifier: "TabBarViewController") as? UITabBarController
+        else {
             assertionFailure("TabBarViewController storyboard ID not set or wrong type")
             return
         }
@@ -132,34 +192,12 @@ final class SplashViewController: UIViewController {
         window.rootViewController = tabBarController
         window.makeKeyAndVisible()
     }
+}
 
-    // MARK: - Setup
+// MARK: - Actions
 
-    private func setupConstraints() {
-        let safeArea = view.safeAreaLayoutGuide
-        NSLayoutConstraint.activate([
-            logoImageView.centerXAnchor.constraint(equalTo: safeArea.centerXAnchor),
-            logoImageView.centerYAnchor.constraint(equalTo: safeArea.centerYAnchor)
-        ])
-    }
-
-    private func setupDebugClearTokenButtonIfNeeded() {
-        #if DEBUG
-        let clearButton = UIButton(type: .system)
-        clearButton.translatesAutoresizingMaskIntoConstraints = false
-        clearButton.setTitle("Clear Token (Debug)", for: .normal)
-        clearButton.setTitleColor(.white, for: .normal)
-        clearButton.addTarget(self, action: #selector(debugClearTokenTapped), for: .touchUpInside)
-        view.addSubview(clearButton)
-
-        NSLayoutConstraint.activate([
-            clearButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            clearButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
-        ])
-        #endif
-    }
-
-    @objc private func debugClearTokenTapped() {
+private extension SplashViewController {
+    @objc func debugClearTokenTapped() {
         storage.token = nil
         #if DEBUG
         print("[Splash][DEBUG] Token cleared by user")
@@ -168,47 +206,60 @@ final class SplashViewController: UIViewController {
     }
 }
 
-// MARK: - Auth Delegate
+// MARK: - AuthViewControllerDelegate
 
 extension SplashViewController: AuthViewControllerDelegate {
     func authViewController(_ vc: AuthViewController, didAuthenticateWithToken token: String) {
         #if DEBUG
         print("[Splash] didAuthenticateWithToken: token received")
         #endif
+
         storage.token = token
         UIBlockingProgressHUD.show()
+
         profileService.fetchProfile(token) { [weak self] result in
             guard let self = self else { return }
             UIBlockingProgressHUD.dismiss()
+
             switch result {
             case .success(let profile):
                 ProfileImageService.shared.fetchProfileImageURL(username: profile.username) { _ in }
                 self.switchToTabBarController()
+
             case .failure(let error):
-                if case NetworkError.urlRequestError(let urlError) = error,
-                   (urlError as NSError).code == NSURLErrorCancelled {
-                    #if DEBUG
-                    print("[Splash] fetchProfile cancelled after auth - ignoring")
-                    #endif
-                    return
-                }
-
-                if case NetworkError.httpStatusCode(let status) = error, status == 401 {
-                    self.storage.token = nil
-                    self.presentAuthControllerIfNeeded()
-                    return
-                }
-
-                let alert = UIAlertController(
-                    title: NSLocalizedString("error_title", comment: "Generic error title"),
-                    message: NSLocalizedString("profile_load_failed_message", comment: "Profile load failed"),
-                    preferredStyle: .alert
-                )
-                alert.addAction(UIAlertAction(title: NSLocalizedString("ok_button", comment: "OK"), style: .default) { _ in
-                    self.presentAuthControllerIfNeeded()
-                })
-                self.present(alert, animated: true)
+                self.handleProfileFetchAfterAuthError(error)
             }
         }
+    }
+
+    private func handleProfileFetchAfterAuthError(_ error: Error) {
+        if case NetworkError.urlRequestError(let urlError) = error,
+           (urlError as NSError).code == NSURLErrorCancelled {
+            #if DEBUG
+            print("[Splash] fetchProfile cancelled after auth - ignoring")
+            #endif
+            return
+        }
+
+        if case NetworkError.httpStatusCode(let status) = error, status == 401 {
+            storage.token = nil
+            presentAuthControllerIfNeeded()
+            return
+        }
+
+        let alert = UIAlertController(
+            title: NSLocalizedString("error_title", comment: "Generic error title"),
+            message: NSLocalizedString("profile_load_failed_message", comment: "Profile load failed"),
+            preferredStyle: .alert
+        )
+        alert.addAction(
+            UIAlertAction(
+                title: NSLocalizedString("ok_button", comment: "OK"),
+                style: .default
+            ) { _ in
+                self.presentAuthControllerIfNeeded()
+            }
+        )
+        present(alert, animated: true)
     }
 }

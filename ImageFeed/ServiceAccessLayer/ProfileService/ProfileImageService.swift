@@ -7,24 +7,31 @@
 
 import Foundation
 
+// MARK: - ProfileImageService
+
 final class ProfileImageService {
+
+    // MARK: - Static
+
     static let shared = ProfileImageService()
-    static let didChangeNotification = Notification.Name(rawValue: "ProfileImageService.avatarDidChange")
+    static let didChangeNotification = Notification.Name("ProfileImageService.avatarDidChange")
+
+    // MARK: - Public State
 
     private(set) var avatarURL: String?
 
+    // MARK: - Private State
+
     private let urlSession: URLSession
     private var task: URLSessionTask?
+
+    // MARK: - Init
 
     init(urlSession: URLSession = .shared) {
         self.urlSession = urlSession
     }
 
-    private init() {
-        self.urlSession = .shared
-    }
-
-    // MARK: - Networking
+    // MARK: - Public
 
     func fetchProfileImageURL(
         username: String,
@@ -40,13 +47,13 @@ final class ProfileImageService {
         }
 
         let task = objectTask(for: request) { [weak self] (result: Result<UserResult, Error>) in
-            guard let self = self else { return }
+            guard let self else { return }
             defer { self.task = nil }
 
             switch result {
             case .success(let userResult):
                 let profileImageURL = userResult.profileImage.small
-                self.avatarURL = profileImageURL
+                avatarURL = profileImageURL
                 completion(.success(profileImageURL))
 
                 NotificationCenter.default.post(
@@ -64,9 +71,17 @@ final class ProfileImageService {
         self.task = task
     }
 
-    // MARK: - Private
+    func reset() {
+        task?.cancel()
+        task = nil
+        avatarURL = nil
+    }
+}
 
-    private func makeProfileImageRequest(username: String) -> URLRequest? {
+// MARK: - Private: Requests
+
+private extension ProfileImageService {
+    func makeProfileImageRequest(username: String) -> URLRequest? {
         guard
             let baseURL = Constants.defaultBaseURL,
             let escaped = username.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
@@ -87,7 +102,7 @@ final class ProfileImageService {
     }
 }
 
-// MARK: - Network helper
+// MARK: - Private: Network helper
 
 private extension ProfileImageService {
     func objectTask<T: Decodable>(

@@ -7,25 +7,35 @@
 
 import Foundation
 
+// MARK: - ProfileService
+
 final class ProfileService {
+
+    // MARK: - Static
+
     static let shared = ProfileService()
+
+    // MARK: - Public State
 
     private(set) var profile: Profile?
 
+    // MARK: - Private State
+
     private var task: URLSessionTask?
     private let urlSession: URLSession
+
+    // MARK: - Init
 
     init(urlSession: URLSession = .shared) {
         self.urlSession = urlSession
     }
 
-    private init() {
-        self.urlSession = .shared
-    }
+    // MARK: - Public
 
-    // MARK: - Networking
-
-    func fetchProfile(_ token: String, completion: @escaping (Result<Profile, Error>) -> Void) {
+    func fetchProfile(
+        _ token: String,
+        completion: @escaping (Result<Profile, Error>) -> Void
+    ) {
         task?.cancel()
 
         guard let request = makeProfileRequest(token: token) else {
@@ -36,24 +46,12 @@ final class ProfileService {
         }
 
         let task = objectTask(for: request) { [weak self] (result: Result<ProfileResult, Error>) in
-            guard let self = self else { return }
+            guard let self else { return }
             defer { self.task = nil }
 
             switch result {
             case .success(let profileResult):
-                let fullName: String
-                if let last = profileResult.lastName, !last.isEmpty {
-                    fullName = "\(profileResult.firstName) \(last)"
-                } else {
-                    fullName = profileResult.firstName
-                }
-
-                let profile = Profile(
-                    username: profileResult.username,
-                    name: fullName,
-                    loginName: "@\(profileResult.username)",
-                    bio: profileResult.bio
-                )
+                let profile = Profile(from: profileResult)
                 self.profile = profile
                 completion(.success(profile))
 
@@ -66,7 +64,17 @@ final class ProfileService {
         self.task = task
     }
 
-    private func makeProfileRequest(token: String) -> URLRequest? {
+    func reset() {
+        task?.cancel()
+        task = nil
+        profile = nil
+    }
+}
+
+// MARK: - Private: Requests
+
+private extension ProfileService {
+    func makeProfileRequest(token: String) -> URLRequest? {
         guard let url = URL(string: "https://api.unsplash.com/me") else {
             return nil
         }
@@ -79,7 +87,7 @@ final class ProfileService {
     }
 }
 
-// MARK: - Network helper
+// MARK: - Private: Network helper
 
 private extension ProfileService {
     func objectTask<T: Decodable>(

@@ -11,10 +11,15 @@ import Kingfisher
 
 final class ProfileViewController: UIViewController {
 
+    // MARK: - Dependencies
+
     private let profileService = ProfileService.shared
+
+    // MARK: - State
+
     private var profileImageServiceObserver: NSObjectProtocol?
 
-    // MARK: - UI Elements
+    // MARK: - UI
 
     private let avatarImageView: UIImageView = {
         let imageView = UIImageView()
@@ -65,26 +70,13 @@ final class ProfileViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = Constant.backgroundColor
 
-        [avatarImageView, nameLabel, loginNameLabel, descriptionLabel, logoutButton].forEach {
-            view.addSubview($0)
-        }
-
+        setupUI()
         setupConstraints()
-        logoutButton.addTarget(self, action: #selector(didTapLogoutButton), for: .touchUpInside)
+        setupActions()
+        setupObservers()
 
         updateProfileDetails()
-
-        profileImageServiceObserver = NotificationCenter.default
-            .addObserver(
-                forName: ProfileImageService.didChangeNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.updateAvatar()
-            }
-
         updateAvatar()
     }
 
@@ -98,22 +90,117 @@ final class ProfileViewController: UIViewController {
             NotificationCenter.default.removeObserver(observer)
         }
     }
+}
 
-    // MARK: - Actions
+// MARK: - Setup
 
-    @objc private func didTapLogoutButton() {
+private extension ProfileViewController {
+    func setupUI() {
+        view.backgroundColor = Constant.backgroundColor
+        [avatarImageView, nameLabel, loginNameLabel, descriptionLabel, logoutButton].forEach {
+            view.addSubview($0)
+        }
     }
 
-    // MARK: - Private Methods
+    func setupConstraints() {
+        let safeArea = view.safeAreaLayoutGuide
 
-    private func updateProfileDetails() {
+        NSLayoutConstraint.activate([
+            avatarImageView.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: Constant.avatarLeading),
+            avatarImageView.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: Constant.avatarTop),
+            avatarImageView.widthAnchor.constraint(equalToConstant: Constant.avatarSize),
+            avatarImageView.heightAnchor.constraint(equalTo: avatarImageView.widthAnchor),
+
+            nameLabel.leadingAnchor.constraint(equalTo: avatarImageView.leadingAnchor),
+            nameLabel.topAnchor.constraint(equalTo: avatarImageView.bottomAnchor, constant: Constant.nameTopOffset),
+            safeArea.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: Constant.trailingOffset),
+
+            loginNameLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            loginNameLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
+            loginNameLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: Constant.loginNameTopOffset),
+
+            descriptionLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            descriptionLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
+            descriptionLabel.topAnchor.constraint(equalTo: loginNameLabel.bottomAnchor, constant: Constant.descriptionTopOffset),
+
+            logoutButton.widthAnchor.constraint(equalToConstant: Constant.logoutButtonSize),
+            logoutButton.heightAnchor.constraint(equalToConstant: Constant.logoutButtonSize),
+            logoutButton.centerYAnchor.constraint(equalTo: avatarImageView.centerYAnchor),
+            safeArea.trailingAnchor.constraint(equalTo: logoutButton.trailingAnchor, constant: Constant.trailingOffset)
+        ])
+    }
+
+    func setupActions() {
+        logoutButton.addTarget(self, action: #selector(didTapLogoutButton), for: .touchUpInside)
+    }
+
+    func setupObservers() {
+        profileImageServiceObserver = NotificationCenter.default.addObserver(
+            forName: ProfileImageService.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateAvatar()
+        }
+    }
+}
+
+// MARK: - Actions
+
+private extension ProfileViewController {
+    @objc func didTapLogoutButton() {
+        let alert = UIAlertController(
+            title: "Пока, пока!",
+            message: "Уверены, что хотите выйти?",
+            preferredStyle: .alert
+        )
+
+        let noAction = UIAlertAction(title: "Нет", style: .cancel, handler: nil)
+        let yesAction = UIAlertAction(title: "Да", style: .default) { [weak self] _ in
+            self?.performLogout()
+        }
+
+        alert.addAction(noAction)
+        alert.addAction(yesAction)
+
+        present(alert, animated: true)
+    }
+
+    func performLogout() {
+        ProfileLogoutService.shared.logout()
+        switchToSplashScreen()
+    }
+}
+
+// MARK: - Navigation
+
+private extension ProfileViewController {
+    func switchToSplashScreen() {
+        guard
+            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+            let window = windowScene.windows.first
+        else {
+            assertionFailure("Unable to get key window for logout")
+            return
+        }
+
+        let splashViewController = SplashViewController()
+        window.rootViewController = splashViewController
+        window.makeKeyAndVisible()
+    }
+}
+
+// MARK: - Update UI
+
+private extension ProfileViewController {
+    func updateProfileDetails() {
         guard let profile = profileService.profile else { return }
         nameLabel.text = profile.name
         loginNameLabel.text = profile.loginName
         descriptionLabel.text = profile.bio
     }
 
-    private func updateAvatar() {
+    func updateAvatar() {
         guard
             let profileImageURL = ProfileImageService.shared.avatarURL,
             let imageUrl = URL(string: profileImageURL)
@@ -149,34 +236,6 @@ final class ProfileViewController: UIViewController {
             }
         }
     }
-
-    private func setupConstraints() {
-        let safeArea = view.safeAreaLayoutGuide
-
-        NSLayoutConstraint.activate([
-            avatarImageView.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: Constant.avatarLeading),
-            avatarImageView.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: Constant.avatarTop),
-            avatarImageView.widthAnchor.constraint(equalToConstant: Constant.avatarSize),
-            avatarImageView.heightAnchor.constraint(equalTo: avatarImageView.widthAnchor),
-
-            nameLabel.leadingAnchor.constraint(equalTo: avatarImageView.leadingAnchor),
-            nameLabel.topAnchor.constraint(equalTo: avatarImageView.bottomAnchor, constant: Constant.nameTopOffset),
-            safeArea.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: Constant.trailingOffset),
-
-            loginNameLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            loginNameLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
-            loginNameLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: Constant.loginNameTopOffset),
-
-            descriptionLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            descriptionLabel.trailingAnchor.constraint(equalTo: nameLabel.trailingAnchor),
-            descriptionLabel.topAnchor.constraint(equalTo: loginNameLabel.bottomAnchor, constant: Constant.descriptionTopOffset),
-
-            logoutButton.widthAnchor.constraint(equalToConstant: Constant.logoutButtonSize),
-            logoutButton.heightAnchor.constraint(equalToConstant: Constant.logoutButtonSize),
-            logoutButton.centerYAnchor.constraint(equalTo: avatarImageView.centerYAnchor),
-            safeArea.trailingAnchor.constraint(equalTo: logoutButton.trailingAnchor, constant: Constant.trailingOffset)
-        ])
-    }
 }
 
 // MARK: - Constants
@@ -205,5 +264,5 @@ private enum Constant {
 
     static let trailingOffset: CGFloat = 16
 
-    static let backgroundColor = UIColor(red: 0.102, green: 0.106, blue: 0.133, alpha: 1) // #1A1B22
+    static let backgroundColor = UIColor(red: 0.102, green: 0.106, blue: 0.133, alpha: 1)
 }
