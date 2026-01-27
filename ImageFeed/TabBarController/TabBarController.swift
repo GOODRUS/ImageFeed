@@ -25,16 +25,30 @@ private extension TabBarController {
     func setupViewControllers() {
         let storyboard = UIStoryboard(name: "Main", bundle: .main)
 
-        let imagesListViewController = storyboard.instantiateViewController(
+        // Лента
+        guard let imagesListViewController = storyboard.instantiateViewController(
             withIdentifier: "ImagesListViewController"
-        )
+        ) as? ImagesListViewController else {
+            assertionFailure("ImagesListViewController not found in storyboard")
+            return
+        }
+        let imagesListPresenter = ImagesListPresenter(view: imagesListViewController)
+        imagesListViewController.configure(imagesListPresenter)
 
+        // Профиль
         let profileViewController = ProfileViewController()
-        profileViewController.tabBarItem = UITabBarItem(
+        let profileTabBarItem = UITabBarItem(
             title: "",
             image: UIImage(named: "tab_profile_active"),
             selectedImage: nil
         )
+        profileTabBarItem.accessibilityIdentifier = "Profile"
+        profileViewController.tabBarItem = profileTabBarItem
+
+        let profilePresenter = ProfilePresenter(
+            view: profileViewController
+        )
+        profileViewController.configure(profilePresenter)
 
         viewControllers = [imagesListViewController, profileViewController]
     }

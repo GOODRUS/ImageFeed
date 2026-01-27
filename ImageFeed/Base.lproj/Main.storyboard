@@ -178,6 +178,7 @@
                     </view>
                     <navigationItem key="navigationItem" id="wrM-iF-mLS"/>
                     <connections>
+                        <outlet property="backButton" destination="UD5-Q2-1Gs" id="T22-7W-WTg"/>
                         <outlet property="imageView" destination="STu-lF-SBo" id="JRH-x0-pbG"/>
                         <outlet property="scrollView" destination="z4O-oM-b9c" id="Y0g-3X-WiR"/>
                     </connections>
@@ -252,6 +253,9 @@
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" id="3qE-Tw-LKa"/>
+                    <connections>
+                        <outlet property="loginButton" destination="Yer-iC-dmA" id="62C-ak-FkE"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="ie2-ia-ELk" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
@@ -337,7 +341,7 @@
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
         <systemColor name="tintColor">
-            <color red="0.0" green="0.47843137254901963" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="0.0" green="0.47843137250000001" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

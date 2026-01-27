@@ -18,6 +18,10 @@ protocol AuthViewControllerDelegate: AnyObject {
 
 final class AuthViewController: UIViewController {
 
+    // MARK: - IBOutlets
+
+    @IBOutlet private weak var loginButton: UIButton!
+
     // MARK: - Dependencies
 
     weak var delegate: AuthViewControllerDelegate?
@@ -32,6 +36,7 @@ final class AuthViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         configureBackButton()
+        setupAccessibility()
     }
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -40,6 +45,14 @@ final class AuthViewController: UIViewController {
         } else {
             super.prepare(for: segue, sender: sender)
         }
+    }
+}
+
+// MARK: - Setup
+
+private extension AuthViewController {
+    func setupAccessibility() {
+        loginButton.accessibilityIdentifier = "Authenticate"
     }
 }
 

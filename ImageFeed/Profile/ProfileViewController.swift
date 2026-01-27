@@ -1,4 +1,5 @@
 //
+//  ProfileViewController.swift
 //  ImageFeed
 //
 //  Created by Дмитрий Шиляев on 11.11.2025.
@@ -11,13 +12,13 @@ import Kingfisher
 
 final class ProfileViewController: UIViewController {
 
-    // MARK: - Dependencies
+    // MARK: - Presenter
 
-    private let profileService = ProfileService.shared
+    private var presenter: ProfilePresenterProtocol?
 
-    // MARK: - State
-
-    private var profileImageServiceObserver: NSObjectProtocol?
+    func configure(_ presenter: ProfilePresenterProtocol) {
+        self.presenter = presenter
+    }
 
     // MARK: - UI
 
@@ -35,6 +36,7 @@ final class ProfileViewController: UIViewController {
         label.text = Constant.nameText
         label.font = UIFont.systemFont(ofSize: Constant.nameFontSize, weight: .semibold)
         label.textColor = .white
+        label.accessibilityIdentifier = "ProfileNameLabel"
         return label
     }()
 
@@ -44,6 +46,7 @@ final class ProfileViewController: UIViewController {
         label.text = Constant.loginNameText
         label.font = UIFont.systemFont(ofSize: Constant.loginFontSize)
         label.textColor = UIColor(red: 0.682, green: 0.686, blue: 0.706, alpha: 1)
+        label.accessibilityIdentifier = "ProfileLoginLabel"
         return label
     }()
 
@@ -53,6 +56,7 @@ final class ProfileViewController: UIViewController {
         label.text = Constant.descriptionText
         label.font = UIFont.systemFont(ofSize: Constant.descriptionFontSize)
         label.textColor = .white
+        label.accessibilityIdentifier = "ProfileBioLabel"
         return label
     }()
 
@@ -74,21 +78,13 @@ final class ProfileViewController: UIViewController {
         setupUI()
         setupConstraints()
         setupActions()
-        setupObservers()
 
-        updateProfileDetails()
-        updateAvatar()
+        presenter?.viewDidLoad()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         avatarImageView.layer.cornerRadius = avatarImageView.bounds.width / 2
-    }
-
-    deinit {
-        if let observer = profileImageServiceObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
     }
 }
 
@@ -133,49 +129,20 @@ private extension ProfileViewController {
     func setupActions() {
         logoutButton.addTarget(self, action: #selector(didTapLogoutButton), for: .touchUpInside)
     }
-
-    func setupObservers() {
-        profileImageServiceObserver = NotificationCenter.default.addObserver(
-            forName: ProfileImageService.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.updateAvatar()
-        }
-    }
 }
 
 // MARK: - Actions
 
 private extension ProfileViewController {
     @objc func didTapLogoutButton() {
-        let alert = UIAlertController(
-            title: "Пока, пока!",
-            message: "Уверены, что хотите выйти?",
-            preferredStyle: .alert
-        )
-
-        let noAction = UIAlertAction(title: "Нет", style: .cancel, handler: nil)
-        let yesAction = UIAlertAction(title: "Да", style: .default) { [weak self] _ in
-            self?.performLogout()
-        }
-
-        alert.addAction(noAction)
-        alert.addAction(yesAction)
-
-        present(alert, animated: true)
-    }
-
-    func performLogout() {
-        ProfileLogoutService.shared.logout()
-        switchToSplashScreen()
+        presenter?.didTapLogout()
     }
 }
 
 // MARK: - Navigation
 
 private extension ProfileViewController {
-    func switchToSplashScreen() {
+    func switchToSplashScreenInternal() {
         guard
             let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
             let window = windowScene.windows.first
@@ -190,21 +157,21 @@ private extension ProfileViewController {
     }
 }
 
-// MARK: - Update UI
+// MARK: - ProfileViewProtocol
 
-private extension ProfileViewController {
-    func updateProfileDetails() {
-        guard let profile = profileService.profile else { return }
-        nameLabel.text = profile.name
-        loginNameLabel.text = profile.loginName
-        descriptionLabel.text = profile.bio
+extension ProfileViewController: ProfileViewProtocol {
+
+    func updateProfileDetails(name: String, loginName: String, bio: String?) {
+        nameLabel.text = name
+        loginNameLabel.text = loginName
+        descriptionLabel.text = bio
     }
 
-    func updateAvatar() {
-        guard
-            let profileImageURL = ProfileImageService.shared.avatarURL,
-            let imageUrl = URL(string: profileImageURL)
-        else { return }
+    func updateAvatar(with url: URL?) {
+        guard let url else {
+            avatarImageView.image = UIImage(named: Constant.avatarImageName)
+            return
+        }
 
         let placeholderPointSize = CGFloat(Constant.avatarSize)
         let placeholderImage = UIImage(systemName: "person.circle.fill")?
@@ -220,21 +187,38 @@ private extension ProfileViewController {
         let processor = RoundCornerImageProcessor(cornerRadius: avatarImageView.bounds.width / 2)
         avatarImageView.kf.indicatorType = .activity
         avatarImageView.kf.setImage(
-            with: imageUrl,
+            with: url,
             placeholder: placeholderImage,
             options: [
                 .processor(processor),
                 .scaleFactor(UIScreen.main.scale),
                 .cacheOriginalImage
             ]
-        ) { result in
-            switch result {
-            case .success(let value):
-                print("[ProfileViewController.updateAvatar]: success, cacheType = \(value.cacheType), source = \(value.source)")
-            case .failure(let error):
-                print("[ProfileViewController.updateAvatar]: failure: \(error.localizedDescription)")
-            }
+        )
+    }
+
+    func showLogoutAlert() {
+        let alert = UIAlertController(
+            title: "Пока, пока!",
+            message: "Уверены, что хотите выйти?",
+            preferredStyle: .alert
+        )
+
+        let noAction = UIAlertAction(title: "Нет", style: .cancel, handler: nil)
+
+        let yesAction = UIAlertAction(title: "Да", style: .default) { [weak self] _ in
+            guard let self else { return }
+            self.presenter?.didConfirmLogout()
         }
+
+        alert.addAction(noAction)
+        alert.addAction(yesAction)
+
+        present(alert, animated: true)
+    }
+
+    func switchToSplashScreen() {
+        switchToSplashScreenInternal()
     }
 }
 
