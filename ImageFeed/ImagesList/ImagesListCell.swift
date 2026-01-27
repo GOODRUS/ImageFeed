@@ -20,6 +20,11 @@ final class ImagesListCell: UITableViewCell {
     @IBOutlet weak var dateLabel: UILabel!
     @IBOutlet weak var gradientView: UIView!
     
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        likeButton.accessibilityIdentifier = "LikeButton"
+    }
+    
     override func prepareForReuse() {
         super.prepareForReuse()
         cellImage.kf.cancelDownloadTask()

@@ -21,6 +21,7 @@ final class SingleImageViewController: UIViewController {
 
     @IBOutlet private weak var imageView: UIImageView!
     @IBOutlet private weak var scrollView: UIScrollView!
+    @IBOutlet private weak var backButton: UIButton!
 
     // MARK: - Lifecycle
 
@@ -28,6 +29,7 @@ final class SingleImageViewController: UIViewController {
         super.viewDidLoad()
         setupScrollView()
         setupImageView()
+        setupAccessibility()
         loadImage()
     }
 
@@ -69,6 +71,11 @@ private extension SingleImageViewController {
 
     func setupImageView() {
         imageView.contentMode = .scaleAspectFit
+    }
+
+    func setupAccessibility() {
+        scrollView.accessibilityIdentifier = "SingleImageScrollView"
+        backButton.accessibilityIdentifier = "BackButton"
     }
 }
 

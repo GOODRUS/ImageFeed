@@ -67,8 +67,8 @@ final class OAuth2Service {
         let task = objectTask(for: request) { [weak self] (result: Result<OAuthTokenResponseBody, Error>) in
             guard let self else { return }
 
-            currentTask = nil
-            currentCode = nil
+            self.currentTask = nil
+            self.currentCode = nil
 
             switch result {
             case .success(let body):
